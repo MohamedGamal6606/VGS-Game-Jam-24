@@ -5,41 +5,163 @@ using UnityEngine;
 public class playerMovement : MonoBehaviour
 {
     public Rigidbody2D rb;
-    [SerializeField] float speed = 5f;
-    public GameObject projectilePrefab;
-    public float projectileSpeed = 10f;
+    public float speed = 5f;
+    [SerializeField] GameObject[] projectilePrefab;
+    [SerializeField] float projectileSpeed = 10f;
     public float fireRate = 0.5f; 
     public LayerMask enemyLayer;
+    [SerializeField] float destroy_timer = 3f;
+    public int bullets = 8;
+    public float footstepDelay = 0.5f; // Minimum time between footstep sounds
+    [SerializeField] List<AudioClip> gunsounds = new List<AudioClip>();
+    [SerializeField] List<AudioClip> footsteps = new List<AudioClip>();
+    [SerializeField] List<AudioClip> reloadSounds = new List<AudioClip>();
+    public weapon weaponScript;
+    public GameObject weaponObject;
 
-
-
+    private AudioSource src;
+    private Animator anim;
+    private Transform teleport;
     private float nextFireTime = 0f;
+    private GameObject checkpoint;
+    private float nextFootstepTime; // Time when the next footstep can be played
+    private bool weapon = false;
     // Start is called before the first frame update
     void Start()
     {
-
+        anim = gameObject.GetComponent<Animator>();
+        src = gameObject.GetComponent<AudioSource>();
+        teleport = null;
     }
 
     // Update is called once per frame
     void Update()
     {
         LookAtMouse();
+        nextFootstepTime -= Time.deltaTime;
         float Horizontal = Input.GetAxis("Horizontal");
         float Vertical = Input.GetAxis("Vertical");
-
+        if (Horizontal != 0 || Vertical!= 0)
+        {
+            anim.SetBool("isWalking",true);
+            
+            
+        }
+        else
+        {
+            anim.SetBool("isWalking", false);
+        }
         rb.velocity = new Vector2(Horizontal * speed, Vertical * speed);
 
-        // Shoot projectile
-        if (Input.GetMouseButton(0)&& Time.time >= nextFireTime) // Change 0 to 1 for right-click or 2 for middle-click
+
+        //footsteps
+        if (Input.GetKey(KeyCode.W)|| Input.GetKey(KeyCode.A)||Input.GetKey(KeyCode.S)|| Input.GetKey(KeyCode.D))
         {
-           
-            ShootProjectile();
-            nextFireTime = Time.time + fireRate;
+            PlayFootstepSound();
+        }
+
+        //punch
+        if (Input.GetMouseButtonDown(1))
+        {
+            anim.SetBool("isPunching",true);
+        }
+        else
+        {
+            anim.SetBool("isPunching", false);
+        }
+
+        if (!weapon)
+        {
+            if (Input.GetKeyDown(KeyCode.Q))
+            {
+
+                if (weaponScript.weaponRadius)
+                {
+                    weapon = true;
+                    anim.SetBool("gun", true);
+                    anim.SetTrigger("pickupGun");
+                    Destroy(weaponObject);
+                }
+
+            }
+        }
+        
+
+
+        // Shoot projectile
+        if (Input.GetMouseButtonDown(0)&& Time.time >= nextFireTime) // Change 0 to 1 for right-click or 2 for middle-click
+        {
+            if (weapon)
+            {
+                if (bullets != 0)
+                {
+
+                    if (gunsounds.Count > 0)
+                    {
+                        //play sounds
+                        int r = Random.Range(0, gunsounds.Count);
+                        src.PlayOneShot(gunsounds[r]);
+                        //projectile shooting
+                        ShootProjectile();
+                        nextFireTime = Time.time + fireRate;
+                        bullets--;
+                    }
+
+                }
+            }
+          
+
+            
+        }
+        //put checkpoint
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            if (checkpoint == null)
+            {
+                checkpoint = Instantiate(projectilePrefab[1], transform.position, Quaternion.identity);
+                teleport = checkpoint.transform;
+                teleport.position = checkpoint.transform.position;
+            }
+            else
+            {
+                checkpoint.transform.position = transform.position;
+                teleport = checkpoint.transform;
+                teleport.position = checkpoint.transform.position;
+            }
+            
+        }
+        //teleport
+        if (Input.GetKeyDown(KeyCode.LeftShift))
+        {
+            if (teleport != null)
+            {
+                transform.position = teleport.position;
+            }
+            
+        }
+
+        //reload
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            
+            reload();
         }
 
 
     }
 
+    void reload()
+    {
+        //check if there is weapon
+        if (weapon)
+        {
+            //play reload sound
+            int r = Random.Range(0, reloadSounds.Count);
+            src.PlayOneShot(reloadSounds[r]);
+            bullets = 8;
+        }
+        
+    }
     void LookAtMouse()
     {
         // Get the position of the cursor in world space
@@ -61,7 +183,7 @@ public class playerMovement : MonoBehaviour
     void ShootProjectile()
     {
         // Instantiate projectile
-        GameObject projectile = Instantiate(projectilePrefab, transform.position, Quaternion.identity);
+        GameObject projectile = Instantiate(projectilePrefab[0], transform.position, Quaternion.identity);
 
         // Calculate direction towards cursor
         Vector3 cursorPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -74,6 +196,7 @@ public class playerMovement : MonoBehaviour
         Rigidbody2D rb = projectile.GetComponent<Rigidbody2D>(); // Use Rigidbody for 3D
         rb.velocity = direction * projectileSpeed;
 
+
         // Raycast to detect hits
         RaycastHit2D hit = Physics2D.Raycast(transform.position, direction, Mathf.Infinity, enemyLayer); // Use Physics.Raycast for 3D
         if (hit.collider != null)
@@ -83,6 +206,27 @@ public class playerMovement : MonoBehaviour
             // Apply damage to enemy
             // For example, you might have a script on the enemy to handle health and damage
             // hit.collider.GetComponent<EnemyHealth>().TakeDamage(damageAmount);
+        }
+        Destroy(projectile, destroy_timer);
+    }
+
+
+    
+
+    // Function to play a footstep sound if enough time has passed since the last footstep
+    public void PlayFootstepSound()
+    {
+        // Check if it's time to play a footstep sound
+        if (nextFootstepTime <= 0 && footsteps.Count > 0 && src != null)
+        {
+            // Choose a random footstep clip from the array
+            AudioClip footstepClip = footsteps[Random.Range(0, footsteps.Count)];
+
+            // Play the chosen footstep clip
+            src.PlayOneShot(footstepClip);
+
+            // Update the next allowed footstep time
+            nextFootstepTime = footstepDelay;
         }
     }
 
