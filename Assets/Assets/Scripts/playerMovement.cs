@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public class playerMovement : MonoBehaviour
 {
     public Rigidbody2D rb;
@@ -16,8 +17,14 @@ public class playerMovement : MonoBehaviour
     [SerializeField] List<AudioClip> gunsounds = new List<AudioClip>();
     [SerializeField] List<AudioClip> footsteps = new List<AudioClip>();
     [SerializeField] List<AudioClip> reloadSounds = new List<AudioClip>();
+    [SerializeField] AudioClip punch;
     public weapon weaponScript;
     public GameObject weaponObject;
+    public changeUI uiScript;
+    public int hp = 3;
+    public GameObject shotPosition;
+    public bool moving;
+    public Texture2D crosshairTexture;
 
     private AudioSource src;
     private Animator anim;
@@ -32,6 +39,7 @@ public class playerMovement : MonoBehaviour
         anim = gameObject.GetComponent<Animator>();
         src = gameObject.GetComponent<AudioSource>();
         teleport = null;
+       
     }
 
     // Update is called once per frame
@@ -43,12 +51,14 @@ public class playerMovement : MonoBehaviour
         float Vertical = Input.GetAxis("Vertical");
         if (Horizontal != 0 || Vertical!= 0)
         {
+            moving = true;
             anim.SetBool("isWalking",true);
             
             
         }
         else
         {
+            moving = false;
             anim.SetBool("isWalking", false);
         }
         rb.velocity = new Vector2(Horizontal * speed, Vertical * speed);
@@ -64,12 +74,17 @@ public class playerMovement : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
         {
             anim.SetBool("isPunching",true);
+            //punch method
+            src.PlayOneShot(punch);
+
         }
         else
         {
             anim.SetBool("isPunching", false);
         }
+        
 
+        //pickup weapon
         if (!weapon)
         {
             if (Input.GetKeyDown(KeyCode.Q))
@@ -81,15 +96,19 @@ public class playerMovement : MonoBehaviour
                     anim.SetBool("gun", true);
                     anim.SetTrigger("pickupGun");
                     Destroy(weaponObject);
+                    int r = Random.Range(0, reloadSounds.Count);
+                    src.PlayOneShot(reloadSounds[r]);
+                    
                 }
 
             }
         }
+
         
 
-
+        uiScript.DefenseMissionTimer();
         // Shoot projectile
-        if (Input.GetMouseButtonDown(0)&& Time.time >= nextFireTime) // Change 0 to 1 for right-click or 2 for middle-click
+        if (Input.GetMouseButtonDown(0)&& Time.timeSinceLevelLoad >= nextFireTime) // Change 0 to 1 for right-click or 2 for middle-click
         {
             if (weapon)
             {
@@ -103,7 +122,8 @@ public class playerMovement : MonoBehaviour
                         src.PlayOneShot(gunsounds[r]);
                         //projectile shooting
                         ShootProjectile();
-                        nextFireTime = Time.time + fireRate;
+                        nextFireTime = Time.timeSinceLevelLoad + fireRate;
+                        uiScript.DecreaseAmmo();
                         bullets--;
                     }
 
@@ -158,7 +178,10 @@ public class playerMovement : MonoBehaviour
             //play reload sound
             int r = Random.Range(0, reloadSounds.Count);
             src.PlayOneShot(reloadSounds[r]);
+            
             bullets = 8;
+            //reload UI
+            uiScript.ReloadAmmo();
         }
         
     }
@@ -183,7 +206,7 @@ public class playerMovement : MonoBehaviour
     void ShootProjectile()
     {
         // Instantiate projectile
-        GameObject projectile = Instantiate(projectilePrefab[0], transform.position, Quaternion.identity);
+        GameObject projectile = Instantiate(projectilePrefab[0], shotPosition.transform.position, Quaternion.identity);
 
         // Calculate direction towards cursor
         Vector3 cursorPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -192,6 +215,8 @@ public class playerMovement : MonoBehaviour
         direction.z = 0f;
         direction.Normalize();
 
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        projectile.transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
         // Set projectile velocity
         Rigidbody2D rb = projectile.GetComponent<Rigidbody2D>(); // Use Rigidbody for 3D
         rb.velocity = direction * projectileSpeed;
@@ -229,5 +254,18 @@ public class playerMovement : MonoBehaviour
             nextFootstepTime = footstepDelay;
         }
     }
+
+    void getHit()
+    {
+        hp--;
+        uiScript.DecreaseHealth();
+        
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        
+    }
+
 
 }
