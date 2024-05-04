@@ -12,9 +12,10 @@ public class changeUI : MonoBehaviour
     [SerializeField] GameObject[] bullets;
     [SerializeField] GameObject[] health;
     [SerializeField] GameObject[] healthDepleted;
+    public playerMovement pm;
 
     private int ammoCount = 7;
-    private int healthCount = 2;
+    private int healthCount;
     // Start is called before the first frame update
     void Start()
     {
@@ -24,20 +25,15 @@ public class changeUI : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        healthCount = pm.hp - 1;
     }
 
-    public void DefenseMissionTimer()
+    public void MissionTimer()
     {
-        int full_timer = 30;
+        
         int t = (int)Time.timeSinceLevelLoad;
-        int temp = (full_timer - t);
-        if(temp <= 0)
-        {
-            temp = 0;
-        }
-        Timer.SetText(""+ temp );
-        Timer2.SetText("" + temp );
+        Timer.SetText(""+ t );
+        Timer2.SetText("" + t );
     }
 
 
@@ -68,10 +64,13 @@ public class changeUI : MonoBehaviour
             
         }
     }
-    public void RefreshHealth()
+    public void RefreshHealth(int hp)
     {
-        healthCount = 2;
-        for (int i = 0; i < health.Length; i++)
+        if (hp>=3)
+        {
+            hp = 3;
+        }
+        for (int i = 0; i < hp; i++)
         {
             health[i].SetActive(true);
             healthDepleted[healthCount].SetActive(false);

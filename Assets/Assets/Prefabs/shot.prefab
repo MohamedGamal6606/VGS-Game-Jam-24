@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 8405050974428986177}
   - component: {fileID: 3283629590278202337}
   - component: {fileID: -8346498503900557842}
+  - component: {fileID: -421108129615731068}
   m_Layer: 0
   m_Name: shot
   m_TagString: Untagged
@@ -100,9 +101,40 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDrag: 0
   m_AngularDrag: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 0
   m_Material: {fileID: 0}
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
+--- !u!60 &-421108129615731068
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3614636772950540685}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 3, y: 3}
+    newSize: {x: 3.84, y: 3.84}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.109375, y: -0.0546875}
+      - {x: 0.0546875, y: -0.0859375}
+      - {x: 0.0546875, y: -0.1796875}
+      - {x: 0.34375, y: -0.1796875}
+      - {x: 0.34375, y: -0.0703125}
+      - {x: 0.328125, y: -0.0546875}

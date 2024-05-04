@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 public class MainMenuScript : MonoBehaviour
 {
+    public GameObject image;
+    
     // Start is called before the first frame update
     void Start()
     {
@@ -19,6 +21,20 @@ public class MainMenuScript : MonoBehaviour
     public void startGame()
     {
         SceneManager.LoadScene("MainScene");
+    }
+
+    public void setActive()
+    {
+        image.SetActive(true);
+    }
+    public void DeactivateImage()
+    {
+        image.SetActive(false);
+    }
+
+    public void closeGame()
+    {
+        Application.Quit();
     }
 
 }

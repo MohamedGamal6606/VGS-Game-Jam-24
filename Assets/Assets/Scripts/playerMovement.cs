@@ -1,23 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class playerMovement : MonoBehaviour
 {
     public Rigidbody2D rb;
     public float speed = 5f;
-    [SerializeField] GameObject[] projectilePrefab;
-    [SerializeField] float projectileSpeed = 10f;
     public float fireRate = 0.5f; 
     public LayerMask enemyLayer;
-    [SerializeField] float destroy_timer = 3f;
     public int bullets = 8;
     public float footstepDelay = 0.5f; // Minimum time between footstep sounds
-    [SerializeField] List<AudioClip> gunsounds = new List<AudioClip>();
-    [SerializeField] List<AudioClip> footsteps = new List<AudioClip>();
-    [SerializeField] List<AudioClip> reloadSounds = new List<AudioClip>();
-    [SerializeField] AudioClip punch;
     public weapon weaponScript;
     public GameObject weaponObject;
     public changeUI uiScript;
@@ -25,6 +19,21 @@ public class playerMovement : MonoBehaviour
     public GameObject shotPosition;
     public bool moving;
     public Texture2D crosshairTexture;
+    public int parts = 0;
+    public Slider sfx;
+    public bool main_menu = false;
+    public GameObject menu;
+    public int batteries_Inserted = 0;
+    //public AudioSource src2;
+
+    [SerializeField] float destroy_timer = 3f;
+    [SerializeField] GameObject[] projectilePrefab;
+    [SerializeField] float projectileSpeed = 10f;
+    [SerializeField] List<AudioClip> gunsounds = new List<AudioClip>();
+    [SerializeField] List<AudioClip> footsteps = new List<AudioClip>();
+    [SerializeField] List<AudioClip> reloadSounds = new List<AudioClip>();
+    [SerializeField] List<AudioClip> grunt = new List<AudioClip>();
+    [SerializeField] AudioClip punch;
 
     private AudioSource src;
     private Animator anim;
@@ -33,13 +42,21 @@ public class playerMovement : MonoBehaviour
     private GameObject checkpoint;
     private float nextFootstepTime; // Time when the next footstep can be played
     private bool weapon = false;
+    private bool punching;
+    Collider2D hitbox;
+    ContactFilter2D enemyFilter;
     // Start is called before the first frame update
     void Start()
     {
         anim = gameObject.GetComponent<Animator>();
         src = gameObject.GetComponent<AudioSource>();
         teleport = null;
-       
+
+        hitbox = transform.GetChild(1).GetComponent<Collider2D>();
+        enemyFilter = new ContactFilter2D();
+        enemyFilter.SetLayerMask(LayerMask.GetMask("Enemies"));
+        enemyFilter.useLayerMask = true;
+
     }
 
     // Update is called once per frame
@@ -61,113 +78,144 @@ public class playerMovement : MonoBehaviour
             moving = false;
             anim.SetBool("isWalking", false);
         }
-        rb.velocity = new Vector2(Horizontal * speed, Vertical * speed);
-
-
-        //footsteps
-        if (Input.GetKey(KeyCode.W)|| Input.GetKey(KeyCode.A)||Input.GetKey(KeyCode.S)|| Input.GetKey(KeyCode.D))
+        if (hp<=0)
         {
-            PlayFootstepSound();
+            SceneManager.LoadScene("LoseScreen");
         }
-
-        //punch
-        if (Input.GetMouseButtonDown(1))
+        //opening and closing menu
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
-            anim.SetBool("isPunching",true);
-            //punch method
-            src.PlayOneShot(punch);
-
-        }
-        else
-        {
-            anim.SetBool("isPunching", false);
-        }
-        
-
-        //pickup weapon
-        if (!weapon)
-        {
-            if (Input.GetKeyDown(KeyCode.Q))
+            if (main_menu)
             {
+                menu.SetActive(false);
+                main_menu = false;
+            }
+            else
+            {
+                menu.SetActive(true);
+                main_menu = true;
+            }
 
-                if (weaponScript.weaponRadius)
-                {
-                    weapon = true;
-                    anim.SetBool("gun", true);
-                    anim.SetTrigger("pickupGun");
-                    Destroy(weaponObject);
-                    int r = Random.Range(0, reloadSounds.Count);
-                    src.PlayOneShot(reloadSounds[r]);
-                    
-                }
+        }
+        //if main menu not opened walk normally
+        if (!main_menu)
+        {
+            rb.velocity = new Vector2(Horizontal * speed, Vertical * speed);
+
+
+            uiScript.RefreshHealth(hp);
+
+
+            //footsteps
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.D))
+            {
+                PlayFootstepSound();
+            }
+
+            //punch
+            if (Input.GetMouseButtonDown(1))
+            {
+                anim.SetBool("isPunching", true);
+                
+                //punch method
+                src.PlayOneShot(punch);
 
             }
-        }
-
-        
-
-        uiScript.DefenseMissionTimer();
-        // Shoot projectile
-        if (Input.GetMouseButtonDown(0)&& Time.timeSinceLevelLoad >= nextFireTime) // Change 0 to 1 for right-click or 2 for middle-click
-        {
-            if (weapon)
+            else
             {
-                if (bullets != 0)
+                anim.SetBool("isPunching", false);
+                
+            }
+            //main menu
+            src.volume = sfx.value;
+            //src2.volume = sfx.value;
+
+
+
+            //pickup weapon
+            if (!weapon)
+            {
+                if (Input.GetKeyDown(KeyCode.Q))
                 {
 
-                    if (gunsounds.Count > 0)
+                    if (weaponScript.weaponRadius)
                     {
-                        //play sounds
-                        int r = Random.Range(0, gunsounds.Count);
-                        src.PlayOneShot(gunsounds[r]);
-                        //projectile shooting
-                        ShootProjectile();
-                        nextFireTime = Time.timeSinceLevelLoad + fireRate;
-                        uiScript.DecreaseAmmo();
-                        bullets--;
+                        weapon = true;
+                        anim.SetBool("gun", true);
+                        anim.SetTrigger("pickupGun");
+                        Destroy(weaponObject);
+                        int r = Random.Range(0, reloadSounds.Count);
+                        src.PlayOneShot(reloadSounds[r]);
+
                     }
 
                 }
             }
-          
 
-            
-        }
-        //put checkpoint
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            if (checkpoint == null)
+
+
+            uiScript.MissionTimer();
+            // Shoot projectile
+            if (Input.GetMouseButtonDown(0) && Time.timeSinceLevelLoad >= nextFireTime) // Change 0 to 1 for right-click or 2 for middle-click
             {
-                checkpoint = Instantiate(projectilePrefab[1], transform.position, Quaternion.identity);
-                teleport = checkpoint.transform;
-                teleport.position = checkpoint.transform.position;
+                if (weapon)
+                {
+                    if (bullets != 0)
+                    {
+
+                        if (gunsounds.Count > 0)
+                        {
+                            //play sounds
+                            int r = Random.Range(0, gunsounds.Count);
+                            src.PlayOneShot(gunsounds[r]);
+                            //projectile shooting
+                            ShootProjectile();
+                            nextFireTime = Time.timeSinceLevelLoad + fireRate;
+                            uiScript.DecreaseAmmo();
+                            bullets--;
+                        }
+
+                    }
+                }
+
+
+
             }
-            else
+            //put checkpoint
+            if (Input.GetKeyDown(KeyCode.E))
             {
-                checkpoint.transform.position = transform.position;
-                teleport = checkpoint.transform;
-                teleport.position = checkpoint.transform.position;
+                if (checkpoint == null)
+                {
+                    checkpoint = Instantiate(projectilePrefab[1], transform.position, Quaternion.identity);
+                    teleport = checkpoint.transform;
+                    teleport.position = checkpoint.transform.position;
+                }
+                else
+                {
+                    checkpoint.transform.position = transform.position;
+                    teleport = checkpoint.transform;
+                    teleport.position = checkpoint.transform.position;
+                }
+
             }
-            
-        }
-        //teleport
-        if (Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            if (teleport != null)
+            //teleport
+            if (Input.GetKeyDown(KeyCode.LeftShift))
             {
-                transform.position = teleport.position;
+                if (teleport != null)
+                {
+                    transform.position = teleport.position;
+                }
+
             }
-            
+
+            //reload
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+
+                reload();
+            }
+
         }
-
-        //reload
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            
-            reload();
-        }
-
-
     }
 
     void reload()
@@ -230,7 +278,7 @@ public class playerMovement : MonoBehaviour
             Debug.Log("Enemy hit: " + hit.collider.name);
             // Apply damage to enemy
             // For example, you might have a script on the enemy to handle health and damage
-            // hit.collider.GetComponent<EnemyHealth>().TakeDamage(damageAmount);
+            hit.collider.GetComponent<enemyScript>().getHit();
         }
         Destroy(projectile, destroy_timer);
     }
@@ -255,17 +303,54 @@ public class playerMovement : MonoBehaviour
         }
     }
 
-    void getHit()
+    public void getHit()
     {
         hp--;
         uiScript.DecreaseHealth();
+        //play grunt sound
+        if (grunt.Count > 0)
+        {
+            int r = Random.Range(0, grunt.Count);
+            src.PlayOneShot(grunt[r]);
+        }
         
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        
+        if (collision.gameObject.CompareTag("bullet"))
+        {
+            getHit();
+            Destroy(collision.gameObject);
+        }
+        if (collision.gameObject.layer.Equals("Enemies")&& punching)
+        {
+            collision.gameObject.GetComponent<enemyScript>().getPunched();
+        }
     }
 
+    public void punchStart()
+    {
+        punching = true;
+    }
+    public void punchEnd()
+    {
+        punching = false;
+    }
 
+    public void puncher()
+    {
+        hitbox.enabled = true;
+        Collider2D[] enemiesToDamage = new Collider2D[10];
+        Physics2D.OverlapCollider(hitbox, enemyFilter, enemiesToDamage);
+
+        foreach (Collider2D enemy in enemiesToDamage)
+        {
+            if (enemy != null)
+            {
+                enemy.GetComponent<enemyScript>().getPunched();
+            }
+        }
+        hitbox.enabled = false;
+    }
 }
